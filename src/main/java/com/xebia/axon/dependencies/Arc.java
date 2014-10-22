@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import de.schlichtherle.io.File;
 import de.schlichtherle.io.FileOutputStream;
@@ -112,28 +113,37 @@ public class Arc implements Comparable<Arc> {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		Arc other = (Arc) obj;
 		if (name == null) {
-			if (other.name != null)
+			if (other.name != null) {
 				return false;
-		} else if (!name.equals(other.name))
+			}
+		} else if (!name.equals(other.name)) {
 			return false;
+		}
 		if (source == null) {
-			if (other.source != null)
+			if (other.source != null) {
 				return false;
-		} else if (!source.equals(other.source))
+			}
+		} else if (!source.equals(other.source)) {
 			return false;
+		}
 		if (target == null) {
-			if (other.target != null)
+			if (other.target != null) {
 				return false;
-		} else if (!target.equals(other.target))
+			}
+		} else if (!target.equals(other.target)) {
 			return false;
+		}
 		return true;
 	}
 
@@ -273,12 +283,10 @@ public class Arc implements Comparable<Arc> {
 		return result;
 	}
 
-
-
 	public static void printAll(Set<Arc> arcs, String name) {
 		printAll(arcs, name, true);
 	}
-	
+
 	public static Set<Node> getAllNodes(Set<Arc> arcs) {
 		Set<Node> result = new TreeSet<Node>();
 
@@ -289,8 +297,8 @@ public class Arc implements Comparable<Arc> {
 		});
 
 		return result;
-	}	
-	
+	}
+
 	public static SortedSet<Arc> sort(Set<Arc> arcs) {
 		SortedSet<Arc> result = new TreeSet<Arc>();
 		result.addAll(arcs);
@@ -334,7 +342,10 @@ public class Arc implements Comparable<Arc> {
 	}
 
 	public static long totalNumberOfArcs(Set<Arc> arcs, Node node) {
-		return arcs.stream().filter(arc -> node.equals(arc.source) || node.equals(arc.target)).count();
+		return arcs
+				.stream()
+				.filter(arc -> node.equals(arc.source)
+						|| node.equals(arc.target)).count();
 	}
 
 	public static void printNodeStatistics(Set<Arc> arcs, String name) {
@@ -342,20 +353,85 @@ public class Arc implements Comparable<Arc> {
 		Set<Node> nodes = getAllNodes(arcs);
 
 		File dir = new File("graphs");
-		File f = new File(dir, dotfile.getName() + "-statistics.txt");
+		File f = new File(dir, dotfile.getName() + "-statistics.csv");
 		FileOutputStream fos = null;
 		try {
 			dir.mkdirs();
 			fos = new FileOutputStream(f);
 			final PrintWriter writer = new PrintWriter(fos);
-			writer.println("#node\tincoming\toutgoing\ttotal");
+			writer.println("#node;incoming;outgoing;total");
 			for (Node node : nodes) {
-				writer.println(String.format("%s\t%d\t%d\t%d", node.name,
+				writer.println(String.format("%s;%d;%d;%d", node.name,
 						numberOfIncomingArcs(arcs, node),
 						numberOfOutgoingArcs(arcs, node),
 						totalNumberOfArcs(arcs, node)));
 			}
 			writer.println("}");
+			writer.close();
+			fos.close();
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException(e);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static void printEventUsage(Set<Arc> arcs, String name) {
+		File dotfile = new File(name);
+		Set<Node> nodes = getAllNodes(arcs);
+		Set<Node> events = nodes.stream().filter(node -> node.isEventType() || node.isCommandType())
+				.collect(Collectors.toCollection(TreeSet::new));
+		Set<Node> handlers = nodes.stream()
+				.filter(node -> !node.isEventType() && !node.isCommandType())
+				.collect(Collectors.toCollection(TreeSet::new));
+
+		File dir = new File("graphs");
+		File f = new File(dir, dotfile.getName() + "-usage.csv");
+		FileOutputStream fos = null;
+		try {
+			dir.mkdirs();
+			fos = new FileOutputStream(f);
+			final PrintWriter writer = new PrintWriter(fos);
+
+			for (Node handler : handlers) {
+				writer.print(";");
+				writer.print(handler.getShortName());
+			}
+			writer.print("\n");
+
+			for (Node event : events) {
+				writer.print(event.getShortName());
+				for (Node handler : handlers) {
+					boolean raises = false;
+					boolean handles = false;
+
+					Set<Arc> arcsOfHandler = arcs
+							.stream()
+							.filter(arc -> (handler.equals(arc.source)
+									|| handler.equals(arc.target)))
+							.collect(Collectors.toSet());
+					
+					for (Arc arc : arcsOfHandler) {
+						if (event.equals(arc.target)) {
+							raises = true;
+						}
+						if (event.equals(arc.source)) {
+							handles = true;
+						}
+					}
+					writer.print(";");
+					if (raises) {
+						writer.print("publishes");
+						if (handles) {
+							writer.print(",");
+						}
+					}
+					if (handles) {
+						writer.print("handles");
+					}
+				}
+				writer.print("\n");
+			}
 			writer.close();
 			fos.close();
 		} catch (FileNotFoundException e) {

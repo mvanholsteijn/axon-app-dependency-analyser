@@ -29,6 +29,7 @@ public class DependencyAnalyzer {
 		// one graph with all dependencies.
 		Arc.printAll(Arc.allArcs.keySet(), "all");
 		Arc.printNodeStatistics(Arc.allArcs.keySet(), "all");
+		Arc.printEventUsage(Arc.allArcs.keySet(), "all");
 
 		// a graph for each Entity, Saga and aggregate root.
 		for (String name : Node.allNodes.keySet()) {

@@ -18,6 +18,7 @@ class AxonMethodVisitor extends MethodVisitor {
 	String className;
 	boolean isEventHandler;
 	boolean isCommandHandler;
+	boolean isSagaHandler;
 	boolean publishInvoked;
 	boolean sendInvoked;
 
@@ -76,12 +77,15 @@ class AxonMethodVisitor extends MethodVisitor {
 				|| desc.equals("Lorg/axonframework/eventsourcing/annotation/EventSourcingHandler;");
 
 		isCommandHandler = desc.equals("Lorg/axonframework/commandhandling/annotation/CommandHandler;");
+		
+		isSagaHandler = desc.equals("Lorg/axonframework/saga/annotation/SagaEventHandler;");
 
 		return super.visitAnnotation(desc, visibleAtRuntime);
 	}
 
 	@Override
 	public void visitEnd() {
+		
 		if (isEventHandler || isCommandHandler) {
 			addEventOrCommandHandlerToGraph();
 		}
@@ -108,21 +112,22 @@ class AxonMethodVisitor extends MethodVisitor {
 	}
 
 	private void addEventOrCommandHandlerToGraph() {
-		Node handled = addEventOrCommandNode();
 		Node handler = Node.create(className);
-		Arc.create(methodName, handled, handler);
-	}
-
-	private Node addEventOrCommandNode() {
 		Type[] argTypes = Type.getArgumentTypes(desc);
 		Node handled = Node.create(argTypes[0].getInternalName());
+
+		if(isSagaHandler) {
+			handler.setSaga(); 
+		}
 		if (isEventHandler) {
 			handled.setEventType();
+			handler.setEventHandler();
 		}
-
 		if (isCommandHandler) {
 			handled.setCommandType();
+			handler.setCommandHandler();
 		}
-		return handled;
+		
+		Arc.create(methodName, handled, handler);
 	}
 }

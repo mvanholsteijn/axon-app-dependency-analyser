@@ -46,18 +46,24 @@ public class Node implements Comparable<Node> {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		Node other = (Node) obj;
 		if (name == null) {
-			if (other.name != null)
+			if (other.name != null) {
 				return false;
-		} else if (!name.equals(other.name))
+			}
+		} else if (!name.equals(other.name)) {
 			return false;
+		}
 		return true;
 	}
 
@@ -85,6 +91,30 @@ public class Node implements Comparable<Node> {
 		properties.put("isAggregateRoot", true);
 	}
 
+	public boolean isSaga() {
+		return properties.containsKey("isSaga");
+	}
+
+	public void setSaga() {
+		properties.put("isSaga", true);
+	}
+	
+	public boolean isEventHandler() {		
+		return properties.containsKey("isEventHandler");
+	}
+
+	public void setEventHandler() {
+		properties.put("isEventHandler", true);
+	}
+	
+	public boolean isCommandHandler() {
+		return properties.containsKey("isCommandHandler");
+	}
+
+	public void setCommandHandler() {
+		properties.put("isCommandHandler", true);
+	}
+	
 	public String getDotStyle() {
 		if (isEventType()) {
 			return String.format("%s [ shape=parallelogram];\n", getShortName());
