@@ -9,7 +9,8 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 /**
- * responsible for analyzing java method implementation for Axon Framework dependencies.
+ * responsible for analyzing java method implementation for Axon Framework
+ * dependencies.
  * 
  * @author mark
  */
@@ -28,7 +29,8 @@ class AxonMethodVisitor extends MethodVisitor {
 
 	Set<Node> commandsAndEventsInstantiated = new HashSet<Node>();
 
-	public AxonMethodVisitor(String className, int access, String methodName, String desc, String signature, String[] exceptions) {
+	public AxonMethodVisitor(String className, int access, String methodName,
+			String desc, String signature, String[] exceptions) {
 		super(Opcodes.ASM5);
 		this.className = className;
 		this.access = access;
@@ -51,18 +53,28 @@ class AxonMethodVisitor extends MethodVisitor {
 	}
 
 	@Override
-	public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
+	public void visitMethodInsn(int opcode, String owner, String name,
+			String desc, boolean itf) {
 		if ("apply".equals(name) && "(Ljava/lang/Object;)V".equals(desc)) {
 			publishInvoked = true;
 		}
-		if ("publishEvent".equals(name) && owner.equals("org/axonframework/eventhandling/EventTemplate")) {
+		
+		if ("publish".equals(name)
+				&& owner.equals("org/axonframework/eventhandling/EventBus")) {
 			publishInvoked = true;
 		}
 
-		if ("dispatch".equals(name) && owner.equals("org/axonframework/commandhandling/CommandBus")) {
+		if ("publishEvent".equals(name)
+				&& owner.equals("org/axonframework/eventhandling/EventTemplate")) {
+			publishInvoked = true;
+		}
+
+		if ("dispatch".equals(name)
+				&& owner.equals("org/axonframework/commandhandling/CommandBus")) {
 			sendInvoked = true;
 		}
-		if (owner.endsWith("CommandGateway") && (name.equals("send") || name.equals("sendAndWait"))) {
+		if (owner.endsWith("CommandGateway")
+				&& (name.equals("send") || name.equals("sendAndWait"))) {
 			sendInvoked = true;
 		}
 
@@ -70,22 +82,26 @@ class AxonMethodVisitor extends MethodVisitor {
 	}
 
 	@Override
-	public AnnotationVisitor visitAnnotation(String desc, boolean visibleAtRuntime) {
+	public AnnotationVisitor visitAnnotation(String desc,
+			boolean visibleAtRuntime) {
 
-		isEventHandler = desc.equals("Lorg/axonframework/saga/annotation/SagaEventHandler;")
+		isEventHandler = isEventHandler
+				|| desc.equals("Lorg/axonframework/saga/annotation/SagaEventHandler;")
 				|| desc.equals("Lorg/axonframework/eventhandling/annotation/EventHandler;")
 				|| desc.equals("Lorg/axonframework/eventsourcing/annotation/EventSourcingHandler;");
 
-		isCommandHandler = desc.equals("Lorg/axonframework/commandhandling/annotation/CommandHandler;");
-		
-		isSagaHandler = desc.equals("Lorg/axonframework/saga/annotation/SagaEventHandler;");
+		isCommandHandler = isCommandHandler
+				|| desc.equals("Lorg/axonframework/commandhandling/annotation/CommandHandler;");
+
+		isSagaHandler = isSagaHandler
+				|| desc.equals("Lorg/axonframework/saga/annotation/SagaEventHandler;");
 
 		return super.visitAnnotation(desc, visibleAtRuntime);
 	}
 
 	@Override
 	public void visitEnd() {
-		
+
 		if (isEventHandler || isCommandHandler) {
 			addEventOrCommandHandlerToGraph();
 		}
@@ -102,13 +118,21 @@ class AxonMethodVisitor extends MethodVisitor {
 	}
 
 	private void addCommandSendsToGraph() {
-		commandsAndEventsInstantiated.stream().filter(node -> node.isCommandType())
-				.forEach(node -> Arc.create(methodName + " sends", Node.create(className), node));
+		commandsAndEventsInstantiated
+				.stream()
+				.filter(node -> node.isCommandType())
+				.forEach(
+						node -> Arc.create(methodName + " sends",
+								Node.create(className), node));
 	}
 
 	private void addEventPublicationsToGraph() {
-		commandsAndEventsInstantiated.stream().filter(node -> node.isEventType())
-				.forEach(node -> Arc.create(methodName + " raises", Node.create(className), node));
+		commandsAndEventsInstantiated
+				.stream()
+				.filter(node -> node.isEventType())
+				.forEach(
+						node -> Arc.create(methodName + " raises",
+								Node.create(className), node));
 	}
 
 	private void addEventOrCommandHandlerToGraph() {
@@ -116,8 +140,8 @@ class AxonMethodVisitor extends MethodVisitor {
 		Type[] argTypes = Type.getArgumentTypes(desc);
 		Node handled = Node.create(argTypes[0].getInternalName());
 
-		if(isSagaHandler) {
-			handler.setSaga(); 
+		if (isSagaHandler) {
+			handler.setSaga();
 		}
 		if (isEventHandler) {
 			handled.setEventType();
@@ -127,7 +151,7 @@ class AxonMethodVisitor extends MethodVisitor {
 			handled.setCommandType();
 			handler.setCommandHandler();
 		}
-		
+
 		Arc.create(methodName, handled, handler);
 	}
 }
